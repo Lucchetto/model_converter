@@ -1,0 +1,9 @@
+flask>=3.0.0
+sanic>=23.6.0
+torch>=2.1.0
+pynvml>=11.5.0
+safetensors>=0.4.0
+numpy>=1.26.1
+einops>=0.7.0
+torchvision>=0.16.0
+opencv-python>=4.8.1
