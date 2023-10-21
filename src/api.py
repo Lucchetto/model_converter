@@ -11,8 +11,8 @@ app = Flask(__name__)
 # Ensure the directory exists
 os.makedirs("tmp", exist_ok=True)
 
-@app.route("/convert", methods=['POST'])
-def convert():
+@app.route("/pthToOnnx", methods=['POST'])
+def pthToOnnx():
     input_file = request.files['file']
     tmp_input_dir = os.path.join("tmp", "input_models")
     os.makedirs(tmp_input_dir, exist_ok=True)
