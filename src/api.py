@@ -18,10 +18,11 @@ def convert():
     os.makedirs(tmp_input_dir, exist_ok=True)
     tmp_output_dir = os.path.join("tmp", "output_models")
     os.makedirs(tmp_output_dir, exist_ok=True)
-
-    tmp_input_path = os.path.join(tmp_input_dir, input_file.filename)
-    tmp_output_path = os.path.join(tmp_output_dir, str(uuid.uuid4()))
     
+    request_id = str(uuid.uuid4())
+    tmp_input_path = os.path.join(tmp_input_dir, request_id + ".pth")
+    tmp_output_path = os.path.join(tmp_output_dir, request_id + ".onnx")
+
     try:
         input_file.save(tmp_input_path)
         convert_pth_to_onnx(tmp_input_path, tmp_output_path)
