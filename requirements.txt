@@ -7,3 +7,4 @@ numpy>=1.26.1
 einops>=0.7.0
 torchvision>=0.16.0
 opencv-python>=4.8.1
+onnx>=1.14.1

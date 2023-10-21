@@ -4,7 +4,7 @@ from sanic.log import logger
 import os
 import uuid
 
-from converter import convert_pth_to_onnx
+from src.converter import convert_pth_to_onnx
 
 app = Flask(__name__)
 
