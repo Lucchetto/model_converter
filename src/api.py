@@ -1,5 +1,4 @@
 from flask import Flask, jsonify, request, send_file
-from pathlib import Path
 from sanic.log import logger
 import os
 import uuid
@@ -10,6 +9,16 @@ app = Flask(__name__)
 
 # Ensure the directory exists
 os.makedirs("tmp", exist_ok=True)
+
+@app.errorhandler(ValueError)
+def handle_convert_error(error):
+    logger.exception(error)
+    if "is unsupported by chaiNNer. Please try another" in str(error):
+        reason = "UNSUPPORTED_FORMAT"
+    else:
+        reason = "UNKNOWN"
+
+    return jsonify({"reason": reason}), 400
 
 @app.route("/pthToOnnx", methods=['POST'])
 def pthToOnnx():
@@ -32,9 +41,8 @@ def pthToOnnx():
             os.path.abspath(tmp_output_path),
             as_attachment=True,
             download_name=os.path.splitext(input_file.filename)[0] + ".onnx")
-    except Exception as e:
-        logger.exception(e)
-        return jsonify({'error': str(e)})
     finally:
-        os.remove(tmp_input_path)
-        os.remove(tmp_output_path)
+        if os.path.isfile(tmp_input_path):
+            os.remove(tmp_input_path)
+        if os.path.isfile(tmp_output_path):
+            os.remove(tmp_output_path)
