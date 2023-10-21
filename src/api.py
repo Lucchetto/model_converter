@@ -30,7 +30,7 @@ def convert():
         return send_file(
             os.path.abspath(tmp_output_path),
             as_attachment=True,
-            download_name=os.path.splitext(input_file.filename) + ".onnx")
+            download_name=os.path.splitext(input_file.filename)[0] + ".onnx")
     except Exception as e:
         logger.exception(e)
         return jsonify({'error': str(e)})
