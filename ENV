@@ -1,3 +1,4 @@
 NGINX_SERVER_NAME=convert-api.superimage.io
 NGINX_HTTPS_ONLY=1
+NGINX_INCLUDE_FILE=nginx.conf
 AUTO_RESTART=1
