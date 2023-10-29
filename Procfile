@@ -1,1 +1,1 @@
-wsgi: src.api:app
+wsgi: src.wsgi:app
