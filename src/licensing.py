@@ -1,4 +1,5 @@
 import base64
+from datetime import datetime, timezone
 import logging
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.backends import default_backend
@@ -6,6 +7,8 @@ from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from enum import IntEnum
 import os
+
+LICENSE_RESPONSE_VALIDITY_TIME = 6 * 60 * 60 * 1000
 
 def setup_pub_key() -> (rsa.RSAPublicKey | None):
     str = os.environ.get('LICENSING_PUB_KEY')
@@ -59,6 +62,11 @@ def validate_license(key: rsa.RSAPublicKey, licensing_response_data: str | None,
         return False
     license_status = LicensingStatus.from_value(safe_str_to_int(license_data[0]))
     package_name = license_data[2]
+    # Remove extra data separated with |{timestamp}:{extra_data}
+    timestamp = int(license_data[5].split(":")[0])
+    # License responses with old timestamp should considered invalid too
+    if (timestamp + LICENSE_RESPONSE_VALIDITY_TIME < datetime.now(timezone.utc).timestamp() * 1000):
+        return False
 
     # Checking signature is not necessary if not licensed or if licensed check signature is provided
     if license_status is not LicensingStatus.LICENSED or signature is None:
