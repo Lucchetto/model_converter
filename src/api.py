@@ -18,7 +18,6 @@ def create_app():
 
     @app.errorhandler(ValueError)
     def handle_convert_error(error):
-        app.lo.exception(error)
         if "is unsupported by chaiNNer. Please try another" in str(error):
             reason = "UNSUPPORTED_FORMAT"
         else:
