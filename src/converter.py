@@ -1,9 +1,18 @@
 import torch
+from chaiNNer.backend.src.nodes.impl.pytorch.architecture import DAT
+from chaiNNer.backend.src.nodes.impl.pytorch.architecture.face.codeformer import CodeFormer
+from chaiNNer.backend.src.nodes.impl.pytorch.architecture.face.gfpganv1_clean_arch import GFPGANv1Clean
+from chaiNNer.backend.src.nodes.impl.pytorch.architecture.face.restoreformer_arch import RestoreFormer
 
 from chaiNNer.backend.src.packages.chaiNNer_pytorch.pytorch.io.load_model import load_model_node
 
+class UnsupportedModelArch(Exception):
+    pass
+
 def convert_pth_to_onnx(input_model: str, output_model: str):
     (model, _, _) = load_model_node(input_model)
+    if model.__class__.__name__ in (DAT.__name__, CodeFormer.__name__, GFPGANv1Clean.__name__, RestoreFormer.__name__):
+        raise UnsupportedModelArch()
     # set the train mode to false since we will only run the forward pass.
     model.train(False)
     model.cpu().eval()
