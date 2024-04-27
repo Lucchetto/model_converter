@@ -1,5 +1,5 @@
 import torch
-from chaiNNer.backend.src.nodes.impl.pytorch.architecture import DAT
+from chaiNNer.backend.src.nodes.impl.pytorch.architecture.DAT import DAT
 from chaiNNer.backend.src.nodes.impl.pytorch.architecture.face.codeformer import CodeFormer
 from chaiNNer.backend.src.nodes.impl.pytorch.architecture.face.gfpganv1_clean_arch import GFPGANv1Clean
 from chaiNNer.backend.src.nodes.impl.pytorch.architecture.face.restoreformer_arch import RestoreFormer
