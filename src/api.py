@@ -4,7 +4,9 @@ from flask import Flask, Response, jsonify, request, send_file
 import os
 import uuid
 
-from src.licensing import setup_pub_key, validate_license
+from src.AppPlatform import AppPlatform
+from src.LicenseData import PlayStoreLicenseData
+from src.LicenseValidator import LicenseValidator
 
 from .converter import UnsupportedModelArch, convert_pth_to_onnx
 
@@ -28,7 +30,7 @@ def create_app():
     # Ensure the directory exists
     os.makedirs("tmp", exist_ok=True)
 
-    pub_key = setup_pub_key()
+    license_validator = LicenseValidator()
 
     @app.errorhandler(ValueError)
     def handle_convert_error(error):
@@ -41,9 +43,22 @@ def create_app():
 
     @app.route("/pthToOnnx", methods=['POST'])
     def pthToOnnx():
-        if pub_key is not None:
-            if not validate_license(pub_key, request.form.get("responseData"), request.form.get("signature")):
-                return api_error(ApiErrorReason.INVALID_LICENSE)
+        app_platform = AppPlatform.from_value(request.headers.get("App-Platform"))
+        license_data = None
+        
+        if app_platform == AppPlatform.Android:
+            response_data = request.form.get("responseData")
+            signature = request.form.get("signature")            
+
+            if response_data is not None:
+                license_data = PlayStoreLicenseData(response_data, signature)
+        elif app_platform == AppPlatform.Desktop:
+            license_data = None
+        else:
+            return api_error(ApiErrorReason.INVALID_LICENSE)
+        
+        if license_validator.validate_play_store_license(license_data) == False:
+            return api_error(ApiErrorReason.INVALID_LICENSE)
 
         input_file = request.files['file']
         tmp_input_dir = os.path.join("tmp", "input_models")
