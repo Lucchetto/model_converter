@@ -1,4 +1,7 @@
-class LicenseData:
+from abc import ABC
+
+
+class LicenseData(ABC):
     pass
 
 class SteamLicenseData(LicenseData):

@@ -1,6 +1,5 @@
 from enum import IntEnum
 import os
-from typing import Dict, Any
 from datetime import datetime, timezone
 import logging
 from cryptography.exceptions import InvalidSignature
@@ -9,7 +8,8 @@ from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 import base64
 
-from src.LicenseData import LicenseData, PlayStoreLicenseData, SteamLicenseData
+from src.LicenseData import PlayStoreLicenseData, SteamLicenseData
+from src.SteamUserApi import SteamUser_AuthenticateUserTicketRequest, SteamUser_CheckAppOwnershipRequest, SteamUserApiClient
 
 class PlayStoreLicensingStatus(IntEnum):
     LICENSED = 0x0
@@ -34,6 +34,7 @@ class LicenseValidator:
     
     play_console_pub_key = None
     steam_partner_web_api_key = None
+    steam_app_id = None
     
     def __init__(self):
         play_console_pub_key_str = os.environ.get('PLAY_CONSOLE_PUB_KEY')
@@ -54,11 +55,18 @@ class LicenseValidator:
         self.steam_partner_web_api_key = os.environ.get("STEAM_PARTNER_WEB_API_KEY")
         if self.steam_partner_web_api_key:
             logging.info("STEAM_PARTNER_WEB_API_KEY defined, Steam licensing validation will be performed")
+            try:
+                self.steam_app_id = int(os.environ.get('STEAM_APP_ID'))
+            except ValueError as e:
+                logging.error("STEAM_APP_ID must defined when Steam licesing validation is enabled, also make sure it's valid")
+                raise e
+            logging.info("Steam app id " + str(self.steam_app_id))
+
         else:
             logging.info("STEAM_PARTNER_WEB_API_KEY not defined, no Steam licensing validation will be performed")
     
     @staticmethod
-    def safe_str_to_int(s, default=None):
+    def __safe_str_to_int(s, default=None):
         """Safely convert a string to an integer. If conversion fails, return the default value."""
         try:
             return int(s)
@@ -76,7 +84,7 @@ class LicenseValidator:
         signed_data_split = license_data.signed_data.split("|")
         if len(signed_data_split) < 6:
             return False
-        license_status = PlayStoreLicensingStatus.from_value(LicenseValidator.safe_str_to_int(signed_data_split[0]))
+        license_status = PlayStoreLicensingStatus.from_value(LicenseValidator.__safe_str_to_int(signed_data_split[0]))
         package_name = signed_data_split[2]
         # Remove extra data separated with |{timestamp}:{extra_data}
         timestamp = int(signed_data_split[5].split(":")[0])
@@ -100,5 +108,34 @@ class LicenseValidator:
         except InvalidSignature as _:
             return False
 
-    def validate_steam_license(self, license_data: SteamLicenseData) -> bool:
-        pass
+    def validate_steam_license(self, license_data: SteamLicenseData | None) -> bool:
+        # license_data is always valid when no Steam partners API key is defined
+        if self.steam_partner_web_api_key == None:
+            return True
+        
+        if license_data is None:
+            return False
+        
+        user_auth_response = SteamUserApiClient.authenticate_user_ticket(
+            SteamUser_AuthenticateUserTicketRequest(
+                key=self.steam_partner_web_api_key,
+                appid=self.steam_app_id,
+                ticket=license_data.auth_ticket.hex(),
+                identity="licenseService"
+            ))
+        
+        if user_auth_response is None:
+            return False
+        
+        app_ownership_response = SteamUserApiClient.check_app_ownership(
+            SteamUser_CheckAppOwnershipRequest(
+                key=self.steam_partner_web_api_key,
+                steamid=user_auth_response.steamid,
+                appid=self.steam_app_id,
+            )
+        )
+        
+        if app_ownership_response is not None and app_ownership_response.ownsapp == True:
+            return True
+        else:
+            return False        

@@ -3,9 +3,10 @@ import logging
 from flask import Flask, Response, jsonify, request, send_file
 import os
 import uuid
+import base64
 
 from src.AppPlatform import AppPlatform
-from src.LicenseData import PlayStoreLicenseData
+from src.LicenseData import PlayStoreLicenseData, SteamLicenseData
 from src.LicenseValidator import LicenseValidator
 
 from .converter import UnsupportedModelArch, convert_pth_to_onnx
@@ -53,12 +54,25 @@ def create_app():
             if response_data is not None:
                 license_data = PlayStoreLicenseData(response_data, signature)
         elif app_platform == AppPlatform.Desktop:
-            license_data = None
+            auth_ticket = None
+            
+            try:
+                auth_ticket = base64.b64decode(request.form.get("steamAuthTicket"))
+            except Exception as e:
+                pass
+            
+            license_data = SteamLicenseData(auth_ticket)
         else:
             return api_error(ApiErrorReason.INVALID_LICENSE)
         
-        if license_validator.validate_play_store_license(license_data) == False:
-            return api_error(ApiErrorReason.INVALID_LICENSE)
+        if isinstance(license_data, SteamLicenseData):
+            if license_validator.validate_steam_license(license_data) == False:
+                return api_error(ApiErrorReason.INVALID_LICENSE)
+        elif isinstance(license_data, PlayStoreLicenseData):
+            if license_validator.validate_play_store_license(license_data) == False:
+                return api_error(ApiErrorReason.INVALID_LICENSE)
+        else:
+            raise TypeError("Unsupported license_data type", license_data)
 
         input_file = request.files['file']
         tmp_input_dir = os.path.join("tmp", "input_models")
