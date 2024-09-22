@@ -45,21 +45,16 @@ def create_app():
     @app.route("/pthToOnnx", methods=['POST'])
     def pthToOnnx():
         app_platform = AppPlatform.from_value(request.headers.get("App-Platform"))
-        license_data = None
         
         if app_platform == AppPlatform.Android:
             response_data = request.form.get("responseData")
             signature = request.form.get("signature")            
-
-            if response_data is not None:
-                license_data = PlayStoreLicenseData(response_data, signature)
+            license_data = PlayStoreLicenseData(response_data, signature)
         elif app_platform == AppPlatform.Desktop:
-            auth_ticket = None
-            
             try:
                 auth_ticket = base64.b64decode(request.form.get("steamAuthTicket"))
             except Exception as e:
-                pass
+                auth_ticket = None
             
             license_data = SteamLicenseData(auth_ticket)
         else:

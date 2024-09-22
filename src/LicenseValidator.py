@@ -33,7 +33,7 @@ class LicenseValidator:
     __LICENSE_RESPONSE_VALIDITY_TIME = 6 * 60 * 60 * 1000
     
     play_console_pub_key = None
-    steam_partner_web_api_key = None
+    steamworks_publisher_web_api_key = None
     steam_app_id = None
     
     def __init__(self):
@@ -52,9 +52,9 @@ class LicenseValidator:
         else:
             logging.info("LICENSING_PUB_KEY not defined, no Play Store licensing validation will be performed")
         
-        self.steam_partner_web_api_key = os.environ.get("STEAM_PARTNER_WEB_API_KEY")
-        if self.steam_partner_web_api_key:
-            logging.info("STEAM_PARTNER_WEB_API_KEY defined, Steam licensing validation will be performed")
+        self.steamworks_publisher_web_api_key = os.environ.get("STEAMWORKS_PUBLISHER_WEB_API_KEY")
+        if self.steamworks_publisher_web_api_key:
+            logging.info("STEAMWORKS_PUBLISHER_WEB_API_KEY defined, Steam licensing validation will be performed")
             try:
                 self.steam_app_id = int(os.environ.get('STEAM_APP_ID'))
             except ValueError as e:
@@ -63,7 +63,7 @@ class LicenseValidator:
             logging.info("Steam app id " + str(self.steam_app_id))
 
         else:
-            logging.info("STEAM_PARTNER_WEB_API_KEY not defined, no Steam licensing validation will be performed")
+            logging.info("STEAMWORKS_PUBLISHER_WEB_API_KEY not defined, no Steam licensing validation will be performed")
     
     @staticmethod
     def __safe_str_to_int(s, default=None):
@@ -73,12 +73,12 @@ class LicenseValidator:
         except ValueError:
             return default
     
-    def validate_play_store_license(self, license_data: PlayStoreLicenseData | None) -> bool:
+    def validate_play_store_license(self, license_data: PlayStoreLicenseData) -> bool:
         # license_data is always valid when no Play Store key is defined
         if self.play_console_pub_key == None:
             return True
         
-        if license_data is None:
+        if license_data.signed_data is None:
             return False
         
         signed_data_split = license_data.signed_data.split("|")
@@ -108,17 +108,17 @@ class LicenseValidator:
         except InvalidSignature as _:
             return False
 
-    def validate_steam_license(self, license_data: SteamLicenseData | None) -> bool:
+    def validate_steam_license(self, license_data: SteamLicenseData) -> bool:
         # license_data is always valid when no Steam partners API key is defined
-        if self.steam_partner_web_api_key == None:
+        if self.steamworks_publisher_web_api_key == None:
             return True
         
-        if license_data is None:
+        if license_data.auth_ticket is None:
             return False
         
         user_auth_response = SteamUserApiClient.authenticate_user_ticket(
             SteamUser_AuthenticateUserTicketRequest(
-                key=self.steam_partner_web_api_key,
+                key=self.steamworks_publisher_web_api_key,
                 appid=self.steam_app_id,
                 ticket=license_data.auth_ticket.hex(),
                 identity="licenseService"
@@ -129,7 +129,7 @@ class LicenseValidator:
         
         app_ownership_response = SteamUserApiClient.check_app_ownership(
             SteamUser_CheckAppOwnershipRequest(
-                key=self.steam_partner_web_api_key,
+                key=self.steamworks_publisher_web_api_key,
                 steamid=user_auth_response.steamid,
                 appid=self.steam_app_id,
             )
