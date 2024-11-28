@@ -10,3 +10,4 @@ opencv-python>=4.8.1
 onnx>=1.14.1
 cryptography>=39.0.1
 pydantic>=2.9.1
+spandrel>=0.4.0

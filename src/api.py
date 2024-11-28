@@ -5,11 +5,13 @@ import os
 import uuid
 import base64
 
+from spandrel.__helpers.registry import UnsupportedModelError
+
 from src.AppPlatform import AppPlatform
 from src.LicenseData import PlayStoreLicenseData, SteamLicenseData
 from src.LicenseValidator import LicenseValidator
 
-from .converter import UnsupportedModelArch, convert_pth_to_onnx
+from .converter import BlacklistedModelArchError, convert_pth_to_onnx
 
 class ApiErrorReason(Enum):
     UNSUPPORTED_ARCH = "UNSUPPORTED_ARCH"
@@ -32,15 +34,6 @@ def create_app():
     os.makedirs("tmp", exist_ok=True)
 
     license_validator = LicenseValidator()
-
-    @app.errorhandler(ValueError)
-    def handle_convert_error(error):
-        if "is unsupported by chaiNNer. Please try another" in str(error):
-            reason = ApiErrorReason.UNSUPPORTED_FORMAT
-        else:
-            reason = ApiErrorReason.UNKNOWN
-
-        return api_error(reason)
 
     @app.route("/pthToOnnx", methods=['POST'])
     def pthToOnnx():
@@ -76,7 +69,7 @@ def create_app():
         os.makedirs(tmp_output_dir, exist_ok=True)
         
         request_id = str(uuid.uuid4())
-        tmp_input_path = os.path.join(tmp_input_dir, request_id + ".pth")
+        tmp_input_path = os.path.join(tmp_input_dir, request_id + os.path.splitext(input_file.filename)[1])
         tmp_output_path = os.path.join(tmp_output_dir, request_id + ".onnx")
 
         try:
@@ -88,8 +81,10 @@ def create_app():
                 os.path.abspath(tmp_output_path),
                 as_attachment=True,
                 download_name=os.path.splitext(input_file.filename)[0] + ".onnx")
-        except UnsupportedModelArch as e:
+        except (BlacklistedModelArchError, UnsupportedModelError) as e:
             return api_error(ApiErrorReason.UNSUPPORTED_ARCH)
+        except ValueError as e:
+            return api_error(ApiErrorReason.UNSUPPORTED_FORMAT)
         finally:
             if os.path.isfile(tmp_input_path):
                 os.remove(tmp_input_path)
