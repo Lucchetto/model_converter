@@ -69,7 +69,10 @@ def create_app():
         os.makedirs(tmp_output_dir, exist_ok=True)
         
         request_id = str(uuid.uuid4())
-        tmp_input_path = os.path.join(tmp_input_dir, request_id + os.path.splitext(input_file.filename)[1])
+        input_file_ext = os.path.splitext(input_file.filename)[1]
+        if input_file_ext == "":
+            input_file_ext = ".pth"
+        tmp_input_path = os.path.join(tmp_input_dir, request_id + input_file_ext)
         tmp_output_path = os.path.join(tmp_output_dir, request_id + ".onnx")
 
         try:
