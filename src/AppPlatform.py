@@ -3,6 +3,7 @@ from enum import StrEnum
 class AppPlatform(StrEnum):
     Android = "android"
     Desktop = "desktop"
+    MacOS = "macos"
     
     @classmethod
     def from_value(cls, value):

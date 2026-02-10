@@ -12,4 +12,7 @@ class PlayStoreLicenseData(LicenseData):
     def __init__(self, signed_data: str | None, signature: str | None):
         self.signed_data = signed_data
         self.signature = signature
-        
+
+class AppStoreLicenseData(LicenseData):
+    def __init__(self, appStoreTransaction: str | None):
+        self.appStoreTransaction = appStoreTransaction

@@ -11,3 +11,4 @@ onnx>=1.14.1
 cryptography>=39.0.1
 pydantic>=2.9.1
 spandrel>=0.4.0
+app-store-server-library>=2.0.0
