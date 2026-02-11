@@ -7,8 +7,12 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 import base64
+from appstoreserverlibrary.models.AppTransaction import AppTransaction
+from appstoreserverlibrary.models.Environment import Environment
+from appstoreserverlibrary.signed_data_verifier import VerificationException, SignedDataVerifier, VerificationStatus
+from returns.result import Result, Success, Failure
 
-from src.LicenseData import PlayStoreLicenseData, SteamLicenseData
+from src.LicenseData import AppStoreLicenseData, PlayStoreLicenseData, SteamLicenseData
 from src.SteamUserApi import SteamUser_AuthenticateUserTicketRequest, SteamUser_CheckAppOwnershipRequest, SteamUserApiClient
 
 class PlayStoreLicensingStatus(IntEnum):
@@ -64,7 +68,17 @@ class LicenseValidator:
 
         else:
             logging.info("STEAMWORKS_PUBLISHER_WEB_API_KEY not defined, no Steam licensing validation will be performed")
-    
+        
+        # --- Apple App Store Setup ---
+        self.apple_app_id = int(os.environ.get('APP_APPLE_ID'))
+        self.apple_bundle_id = os.environ.get('APP_BUNDLE_ID') # Required for verification
+
+        if self.apple_app_id and self.apple_bundle_id:
+            logging.info("APP_APPLE_ID and APP_BUNDLE_ID defined, App Store licensing validation will be performed")
+            self.apple_root_certificates = self.__load_apple_root_certificates()
+        else:
+            logging.info("App Store config missing, no App Store licensing validation will be performed")
+
     @staticmethod
     def __safe_str_to_int(s, default=None):
         """Safely convert a string to an integer. If conversion fails, return the default value."""
@@ -72,7 +86,8 @@ class LicenseValidator:
             return int(s)
         except ValueError:
             return default
-    
+
+
     def validate_play_store_license(self, license_data: PlayStoreLicenseData) -> bool:
         # license_data is always valid when no Play Store key is defined
         if self.play_console_pub_key == None:
@@ -138,4 +153,70 @@ class LicenseValidator:
         if app_ownership_response is not None and app_ownership_response.ownsapp == True:
             return True
         else:
-            return False        
+            return False
+    
+    # --- Apple App Store Logic ---
+    def validate_app_store_license(self, license_data: AppStoreLicenseData) -> bool:
+        # If no App Store keys are defined, validation is skipped (implicitly valid logic)
+        if self.apple_app_id is None or self.apple_bundle_id is None:
+            return True
+
+        if not license_data.appStoreTransaction:
+            return False
+
+        # 1. Try validating with Production environment
+        result = self.__verify_app_store_jws(license_data.appStoreTransaction, False).lash(
+            lambda e: self.__verify_app_store_jws(
+                license_data.appStoreTransaction, 
+                True
+            ) if (e.status == VerificationStatus.INVALID_APP_IDENTIFIER) 
+            else Failure(e)
+        )
+
+        match result:
+            case Success(transaction):
+                logging.info(f"App Store transaction {transaction}")
+                return True
+
+            case Failure(error):
+                logging.error(f"Validation failed with error {error}")
+                return False
+
+    def __verify_app_store_jws(self, jws: str, sandbox: bool) -> Result[AppTransaction, VerificationException]:
+        result: Result[AppTransaction, Exception] | None
+
+        # Try online=True first, then online=False if retryable error
+        for online in [True, False]:
+            try:
+                if sandbox:
+                    verifier = SignedDataVerifier(
+                        self.apple_root_certificates,
+                        online,
+                        Environment.SANDBOX,
+                        self.apple_bundle_id,
+                    )
+                else:
+                    verifier = SignedDataVerifier(
+                        self.apple_root_certificates,
+                        online,
+                        Environment.PRODUCTION,
+                        self.apple_bundle_id,
+                        self.apple_app_id,
+                    )
+                
+                result = Success(verifier.verify_and_decode_app_transaction(jws))
+                break
+
+            except VerificationException as e:
+                result = Failure(e)
+
+                if e.status == VerificationStatus.RETRYABLE_VERIFICATION_FAILURE:
+                    # Retry with online == false
+                    continue
+                else:
+                    break
+
+        if result is None:
+            raise ValueError("result is null")
+
+        return result
