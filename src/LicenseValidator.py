@@ -11,6 +11,7 @@ from appstoreserverlibrary.models.AppTransaction import AppTransaction
 from appstoreserverlibrary.models.Environment import Environment
 from appstoreserverlibrary.signed_data_verifier import VerificationException, SignedDataVerifier, VerificationStatus
 from returns.result import Result, Success, Failure
+from pathlib import Path
 
 from src.LicenseData import AppStoreLicenseData, PlayStoreLicenseData, SteamLicenseData
 from src.SteamUserApi import SteamUser_AuthenticateUserTicketRequest, SteamUser_CheckAppOwnershipRequest, SteamUserApiClient
@@ -39,6 +40,9 @@ class LicenseValidator:
     play_console_pub_key = None
     steamworks_publisher_web_api_key = None
     steam_app_id = None
+    apple_app_id = None
+    apple_bundle_id = None
+    apple_root_certificates = []
     
     def __init__(self):
         play_console_pub_key_str = os.environ.get('PLAY_CONSOLE_PUB_KEY')
@@ -70,11 +74,13 @@ class LicenseValidator:
             logging.info("STEAMWORKS_PUBLISHER_WEB_API_KEY not defined, no Steam licensing validation will be performed")
         
         # --- Apple App Store Setup ---
-        self.apple_app_id = int(os.environ.get('APP_APPLE_ID'))
-        self.apple_bundle_id = os.environ.get('APP_BUNDLE_ID') # Required for verification
+        apple_app_id_str = os.environ.get('APP_APPLE_ID')
+        apple_bundle_id_str = os.environ.get('APP_BUNDLE_ID')
 
-        if self.apple_app_id and self.apple_bundle_id:
+        if apple_app_id_str and apple_bundle_id_str:
             logging.info("APP_APPLE_ID and APP_BUNDLE_ID defined, App Store licensing validation will be performed")
+            self.apple_app_id = int(apple_app_id_str)
+            self.apple_bundle_id = apple_bundle_id_str
             self.apple_root_certificates = self.__load_apple_root_certificates()
         else:
             logging.info("App Store config missing, no App Store licensing validation will be performed")
@@ -220,3 +226,15 @@ class LicenseValidator:
             raise ValueError("result is null")
 
         return result
+    
+    @staticmethod
+    def __load_apple_root_certificates() -> list[bytes]:
+        files_bytes: list[bytes] = []
+        current_dir = Path(__file__).parent
+        target_dir = current_dir / "certificate"
+
+        for file_path in target_dir.glob('*.cer'):
+            if file_path.is_file():
+                files_bytes.append(file_path.read_bytes())
+
+        return files_bytes
