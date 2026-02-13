@@ -27,7 +27,7 @@ def convert_pth_to_onnx(input_model: str, output_model: str):
             model_descriptor.model,
             x,
             output_model,
-            opset_version=11,
+            opset_version=17,
             export_params=True,
             input_names = ['input'],
             output_names = ['output'], 

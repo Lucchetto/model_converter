@@ -8,7 +8,7 @@ import base64
 from spandrel.__helpers.registry import UnsupportedModelError
 
 from src.AppPlatform import AppPlatform
-from src.LicenseData import PlayStoreLicenseData, SteamLicenseData
+from src.LicenseData import AppStoreLicenseData, PlayStoreLicenseData, SteamLicenseData
 from src.LicenseValidator import LicenseValidator
 
 from .converter import BlacklistedModelArchError, convert_pth_to_onnx
@@ -41,7 +41,7 @@ def create_app():
         
         if app_platform == AppPlatform.Android:
             response_data = request.form.get("responseData")
-            signature = request.form.get("signature")            
+            signature = request.form.get("signature")
             license_data = PlayStoreLicenseData(response_data, signature)
         elif app_platform == AppPlatform.Desktop:
             try:
@@ -50,6 +50,8 @@ def create_app():
                 auth_ticket = None
             
             license_data = SteamLicenseData(auth_ticket)
+        elif app_platform == AppPlatform.MacOS:
+            license_data = AppStoreLicenseData(request.form.get("appStoreTransaction"))
         else:
             return api_error(ApiErrorReason.INVALID_LICENSE)
         
@@ -58,6 +60,9 @@ def create_app():
                 return api_error(ApiErrorReason.INVALID_LICENSE)
         elif isinstance(license_data, PlayStoreLicenseData):
             if license_validator.validate_play_store_license(license_data) == False:
+                return api_error(ApiErrorReason.INVALID_LICENSE)
+        elif isinstance(license_data, AppStoreLicenseData):
+            if license_validator.validate_app_store_license(license_data) == False:
                 return api_error(ApiErrorReason.INVALID_LICENSE)
         else:
             raise TypeError("Unsupported license_data type", license_data)
