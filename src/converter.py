@@ -31,4 +31,5 @@ def convert_pth_to_onnx(input_model: str, output_model: str):
             export_params=True,
             input_names = ['input'],
             output_names = ['output'], 
-            dynamic_axes=dynamic_axes)
+            dynamic_axes=dynamic_axes,
+            dynamo=False)
