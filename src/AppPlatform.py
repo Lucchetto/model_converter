@@ -4,6 +4,7 @@ class AppPlatform(StrEnum):
     Android = "android"
     Desktop = "desktop"
     MacOS = "macos"
+    iOS = "ios"
     
     @classmethod
     def from_value(cls, value):

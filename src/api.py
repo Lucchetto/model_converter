@@ -50,7 +50,7 @@ def create_app():
                 auth_ticket = None
             
             license_data = SteamLicenseData(auth_ticket)
-        elif app_platform == AppPlatform.MacOS:
+        elif app_platform == AppPlatform.MacOS or app_platform == AppPlatform.iOS:
             license_data = AppStoreLicenseData(request.form.get("appStoreTransaction"))
         else:
             return api_error(ApiErrorReason.INVALID_LICENSE)
