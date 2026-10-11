@@ -10,6 +10,6 @@ opencv-python==4.8.1.78
 onnx==1.15.0
 cryptography==40.0.0
 pydantic==2.9.1
-spandrel==0.4.2
+git+https://github.com/Lucchetto/spandrel.git@22417f0042f5fb53312222618b683c6538fe8bed#egg=spandrel&subdirectory=libs/spandrel
 app-store-server-library==2.0.0
 returns==0.26.0
